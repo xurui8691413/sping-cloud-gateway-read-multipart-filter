@@ -52,16 +52,6 @@ import java.util.Collections;
 public class ReadMultipartBodyFilter implements GlobalFilter, Ordered {
 	private final static Logger logger = LoggerFactory.getLogger(ReadMultipartBodyFilter.class);
 
-	private static final Mono<MultiValueMap<String, Part>> EMPTY_MULTIPART_DATA =
-			Mono.just(CollectionUtils.unmodifiableMultiValueMap(new LinkedMultiValueMap<String, Part>(0)))
-					.cache();
-
-	private static final ResolvableType MULTIPART_DATA_TYPE = ResolvableType.forClassWithGenerics(
-			MultiValueMap.class, String.class, Part.class);
-
-	@Autowired
-	private ServerCodecConfigurer codecConfigurer;
-
 	@Override
 	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
 		return exchange.getRequest().getBody().collectList().flatMap(dataBuffers -> {
@@ -88,13 +78,7 @@ public class ReadMultipartBodyFilter implements GlobalFilter, Ordered {
 		});
 
 	}
-
-	protected DataBuffer buffer(byte[] bytes) {
-		NettyDataBufferFactory nettyDataBufferFactory = new NettyDataBufferFactory(ByteBufAllocator.DEFAULT);
-		DataBuffer buffer = nettyDataBufferFactory.allocateBuffer(bytes.length);
-		buffer.write(bytes);
-		return buffer;
-	}
+	
 	/**
 	 *
 	 * @param data1
@@ -111,23 +95,5 @@ public class ReadMultipartBodyFilter implements GlobalFilter, Ordered {
 	public int getOrder() {
 		return Ordered.HIGHEST_PRECEDENCE;
 	}
-
-	private static Mono<MultiValueMap<String, Part>> repackageMultipartData(ServerHttpRequest request,
-																	   ServerCodecConfigurer configurer) {
-		try {
-			MediaType contentType = request.getHeaders().getContentType();
-			if (MediaType.MULTIPART_FORM_DATA.isCompatibleWith(contentType)) {
-				return ((HttpMessageReader<MultiValueMap<String, Part>>) configurer.getReaders().stream()
-						.filter(reader -> reader.canRead(MULTIPART_DATA_TYPE, MediaType.MULTIPART_FORM_DATA))
-						.findFirst()
-						.orElseThrow(() -> new IllegalStateException("No multipart HttpMessageReader.")))
-						.readMono(MULTIPART_DATA_TYPE, request, Collections.emptyMap())
-						.switchIfEmpty(EMPTY_MULTIPART_DATA)
-						.cache();
-			}
-		}
-		catch (InvalidMediaTypeException ex) {
-		}
-		return EMPTY_MULTIPART_DATA;
-	}
+	
 }
