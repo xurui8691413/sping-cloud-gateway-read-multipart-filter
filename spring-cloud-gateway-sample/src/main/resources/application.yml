@@ -1,0 +1,51 @@
+server:
+  port: 9090
+spring:
+  jmx:
+    enabled: false
+  cloud:
+    gateway:
+      routes:
+      # =====================================
+      # to run server
+      # $ wscat --listen 9000
+      # to run client
+      # $ wscat --connect ws://localhost:8080/echo
+      - id: websocket_test
+        uri: ws://localhost:9000
+        order: 9000
+        predicates:
+        - Path=/echo
+      # =====================================
+      - id: testController
+        uri: http://localhost:${server.port}
+        order: 10000
+        predicates:
+        - Path=/gateway/test/json
+        filters:
+        - RewritePath=/gateway/test/json, /test/test/json
+
+      - id: testController1
+        uri: http://localhost:${server.port}
+        order: 10000
+        predicates:
+        - Path=/gateway/test/multipart
+        filters:
+        - RewritePath=/gateway/test/multipart, /test/test/multipart
+
+      - id: test1
+        uri: http://localhost:${server.port}
+        order: 10000
+        predicates:
+        - Path=/test/**
+
+
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.http.server.reactive: INFO
+    org.springframework.web.reactive: INFO
+    reactor.ipc.netty: INDO
+    reactor.netty: INFO
+
+management.endpoints.web.exposure.include: '*'
